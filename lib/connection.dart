@@ -58,8 +58,6 @@ class _Connection implements Connection {
 
     return RawSocket.connect(settings._host, settings._port).then((socket) {
 
-      print('remote: ${socket.remotePort} port: ${socket.port}');
-
       var msg = new _MessageBuffer();
       msg.addInt32(8); // Length
       msg.addInt32(80877103); // SSL magic number.
@@ -83,7 +81,7 @@ class _Connection implements Connection {
           return;
         }
 
-        SecureSocket.start(socket).then(
+        startSecureSocket(socket).then(
           (s) => completer.complete(s),
           onError: (e) => completer.completeError(e));
 

@@ -1,8 +1,33 @@
-Index: ../sdk/lib/io/secure_socket.dart
+Index: io/secure_socket.dart
 ===================================================================
---- ../sdk/lib/io/secure_socket.dart	(revision 19363)
-+++ ../sdk/lib/io/secure_socket.dart	(working copy)
-@@ -39,15 +39,36 @@
+--- io/secure_socket.dart	(revision 19363)
++++ io/secure_socket.dart	(working copy)
+@@ -4,6 +4,24 @@
+ 
+ part of dart.io;
+ 
++// Doesn't work :(
++Future<SecureSocket> startSecureSocket(
++       RawSocket rawSocket,
++       {bool sendClientCertificate: false,
++        String certificateName,
++        bool onBadCertificate(X509Certificate certificate)}) {
++
++    return _RawSecureSocket.connect(
++        rawSocket.remoteHost,
++        rawSocket.remotePort,
++        certificateName,
++        socket: rawSocket,
++        is_server: false,
++        sendClientCertificate: sendClientCertificate,
++        onBadCertificate: onBadCertificate)
++    .then((rawSecureSocket) => new SecureSocket._(rawSecureSocket));
++}
++
+ /**
+  * A high-level class for communicating securely over a TCP socket, using
+  * TLS and SSL. The [SecureSocket] exposes both a [Stream] and an
+@@ -39,12 +57,14 @@
        int port,
        {bool sendClientCertificate: false,
         String certificateName,
@@ -19,29 +44,7 @@ Index: ../sdk/lib/io/secure_socket.dart
          .then((rawSocket) => new SecureSocket._(rawSocket));
    }
  
-+  // Doesn't work :(
-+  static Future<SecureSocket> start(
-+       RawSocket rawSocket,
-+       {bool sendClientCertificate: false,
-+        String certificateName,
-+        bool onBadCertificate(X509Certificate certificate)}) {
-+
-+    return _RawSecureSocket.connect(
-+        rawSocket.remoteHost,
-+        rawSocket.remotePort,
-+        certificateName,
-+        socket: rawSocket,
-+        is_server: false,
-+        sendClientCertificate: sendClientCertificate,
-+        onBadCertificate: onBadCertificate)
-+    .then((rawSecureSocket) => new SecureSocket._(rawSecureSocket));
-+  }
-+  
-+
-   /**
-    * Get the peer certificate for a connected SecureSocket.  If this
-    * SecureSocket is the server end of a secure socket connection,
-@@ -133,14 +154,16 @@
+@@ -133,14 +153,16 @@
        int port,
        {bool sendClientCertificate: false,
         String certificateName,
@@ -60,7 +63,7 @@ Index: ../sdk/lib/io/secure_socket.dart
    }
  
    /**
-@@ -221,7 +244,8 @@
+@@ -221,7 +243,8 @@
         bool requestClientCertificate: false,
         bool requireClientCertificate: false,
         bool sendClientCertificate: false,
@@ -70,7 +73,7 @@ Index: ../sdk/lib/io/secure_socket.dart
       return new _RawSecureSocket(host,
                                   requestedPort,
                                   certificateName,
-@@ -230,7 +254,8 @@
+@@ -230,7 +253,8 @@
                                   requestClientCertificate,
                                   requireClientCertificate,
                                   sendClientCertificate,
@@ -80,7 +83,7 @@ Index: ../sdk/lib/io/secure_socket.dart
           ._handshakeComplete.future;
    }
  
-@@ -243,7 +268,8 @@
+@@ -243,7 +267,8 @@
        bool this.requestClientCertificate,
        bool this.requireClientCertificate,
        bool this.sendClientCertificate,
@@ -90,7 +93,7 @@ Index: ../sdk/lib/io/secure_socket.dart
      _controller = new StreamController<RawSocketEvent>(
          onPauseStateChange: _onPauseStateChange,
          onSubscriptionStateChange: _onSubscriptionStateChange);
-@@ -263,6 +289,46 @@
+@@ -263,6 +288,46 @@
      } else {
        futureSocket = new Future.immediate(socket);
      }
@@ -137,3 +140,12 @@ Index: ../sdk/lib/io/secure_socket.dart
      futureSocket.then((rawSocket) {
        rawSocket.writeEventsEnabled = false;
        _socket = rawSocket;
+@@ -271,7 +336,7 @@
+                                            onDone: _doneHandler);
+       _connectPending = true;
+       _secureFilter.connect(host,
+-                            port,
++                            requestedPort,
+                             is_server,
+                             certificateName,
+                             requestClientCertificate ||
