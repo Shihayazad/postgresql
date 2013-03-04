@@ -17,14 +17,14 @@ Future<Connection> connect(
     String username,
     String database,
     String password,
-    {String host : 'localhost', int port: 5432, bool requireSsl: false}) {
+    {String host : 'localhost', int port: 5432}) { //, bool requireSsl: false}) {
   
   var settings = new _Settings(username, database, password, host: host, port: port);
 
-  if (requireSsl)
+//  if (requireSsl)
     return _Connection._connectSsl2(settings);
-  else
-    return _Connection._connect(settings);
+//  else
+//    return _Connection._connect(settings);
 }
 
 abstract class ExecuteResult {
