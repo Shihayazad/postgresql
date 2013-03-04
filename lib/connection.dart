@@ -38,9 +38,73 @@ class _Connection implements Connection {
       return conn._connected.future;
     });
   }
-  
-  
+
+  static Future<_Connection> _connectSsl2(_Settings settings) {
+
+    return SecureSocket.connect(
+        settings._host,
+        settings._port,
+        enablePostgresqlHack: true,
+        onBadCertificate: (_) => true).then((socket) {
+      var conn = new _Connection(socket, settings);
+      socket.listen(conn._readData, onError: conn._handleSocketError, onDone: conn._handleSocketClosed);
+      conn._state = _SOCKET_CONNECTED;
+      conn._sendStartupMessage();
+      return conn._connected.future;
+    });
+  }
+
+  static Future<_Connection> _connectSsl(_Settings settings) {
+
+    return RawSocket.connect(settings._host, settings._port).then((socket) {
+
+      print('remote: ${socket.remotePort} port: ${socket.port}');
+
+      var msg = new _MessageBuffer();
+      msg.addInt32(8); // Length
+      msg.addInt32(80877103); // SSL magic number.
+
+      socket.write(msg.buffer);
+
+      var completer = new Completer<RawSecureSocket>();
+
+      var subs;      
+      subs = socket.listen((e) {
+
+        if (e != RawSocketEvent.READ)
+          return;
+
+        subs.cancel();
+        var data = socket.read(1);
+
+        if (data == null || data[0] != _S) {
+          socket.close();
+          completer.completeError('This postgresql server does not support SSL.');
+          return;
+        }
+
+        SecureSocket.start(socket).then(
+          (s) => completer.complete(s),
+          onError: (e) => completer.completeError(e));
+
+      });
+
+      return completer.future.then((secureSocket) {
+          var conn = new _Connection(socket, settings);
+          conn._state = _SOCKET_CONNECTED;
+          conn._sendStartupMessage();
+          return conn._connected.future;
+      }, onError: (error) {
+        print('Error: $error');
+        socket.close();
+        //FIXME pass error on.
+      });
+
+    });
+  }
+
   void _sendStartupMessage() {
+
     if (_state != _SOCKET_CONNECTED)
       throw new Error();
     
@@ -59,7 +123,7 @@ class _Connection implements Connection {
     
     _state = _AUTHENTICATING;
   }
-  
+
   void _readAuthenticationRequest(int msgType, int length) {
     assert(_buffer.bytesAvailable >= length);
     
@@ -153,7 +217,7 @@ class _Connection implements Connection {
     try {
       
       if (_state == _CLOSED)
-        return;
+        return;      
   
       _buffer.append(data);
   

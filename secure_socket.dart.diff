@@ -1,0 +1,139 @@
+Index: ../sdk/lib/io/secure_socket.dart
+===================================================================
+--- ../sdk/lib/io/secure_socket.dart	(revision 19363)
++++ ../sdk/lib/io/secure_socket.dart	(working copy)
+@@ -39,15 +39,36 @@
+       int port,
+       {bool sendClientCertificate: false,
+        String certificateName,
+-       bool onBadCertificate(X509Certificate certificate)}) {
++       bool onBadCertificate(X509Certificate certificate),
++       bool enablePostgresqlHack}) {
+     return RawSecureSocket.connect(host,
+                                    port,
+                                    sendClientCertificate: sendClientCertificate,
+                                    certificateName: certificateName,
+-                                   onBadCertificate: onBadCertificate)
++                                   onBadCertificate: onBadCertificate,
++                                   enablePostgresqlHack: enablePostgresqlHack)
+         .then((rawSocket) => new SecureSocket._(rawSocket));
+   }
+ 
++  // Doesn't work :(
++  static Future<SecureSocket> start(
++       RawSocket rawSocket,
++       {bool sendClientCertificate: false,
++        String certificateName,
++        bool onBadCertificate(X509Certificate certificate)}) {
++
++    return _RawSecureSocket.connect(
++        rawSocket.remoteHost,
++        rawSocket.remotePort,
++        certificateName,
++        socket: rawSocket,
++        is_server: false,
++        sendClientCertificate: sendClientCertificate,
++        onBadCertificate: onBadCertificate)
++    .then((rawSecureSocket) => new SecureSocket._(rawSecureSocket));
++  }
++  
++
+   /**
+    * Get the peer certificate for a connected SecureSocket.  If this
+    * SecureSocket is the server end of a secure socket connection,
+@@ -133,14 +154,16 @@
+       int port,
+       {bool sendClientCertificate: false,
+        String certificateName,
+-       bool onBadCertificate(X509Certificate certificate)}) {
++       bool onBadCertificate(X509Certificate certificate),
++       bool enablePostgresqlHack}) {
+     return  _RawSecureSocket.connect(
+         host,
+         port,
+         certificateName,
+         is_server: false,
+         sendClientCertificate: sendClientCertificate,
+-        onBadCertificate: onBadCertificate);
++        onBadCertificate: onBadCertificate,
++        enablePostgresqlHack: enablePostgresqlHack);
+   }
+ 
+   /**
+@@ -221,7 +244,8 @@
+        bool requestClientCertificate: false,
+        bool requireClientCertificate: false,
+        bool sendClientCertificate: false,
+-       bool onBadCertificate(X509Certificate certificate)}){
++       bool onBadCertificate(X509Certificate certificate),
++       bool enablePostgresqlHack: false}){
+      return new _RawSecureSocket(host,
+                                  requestedPort,
+                                  certificateName,
+@@ -230,7 +254,8 @@
+                                  requestClientCertificate,
+                                  requireClientCertificate,
+                                  sendClientCertificate,
+-                                 onBadCertificate)
++                                 onBadCertificate,
++                                 enablePostgresqlHack)
+          ._handshakeComplete.future;
+   }
+ 
+@@ -243,7 +268,8 @@
+       bool this.requestClientCertificate,
+       bool this.requireClientCertificate,
+       bool this.sendClientCertificate,
+-      bool this.onBadCertificate(X509Certificate certificate)) {
++      bool this.onBadCertificate(X509Certificate certificate),
++      [bool enablePostgresqlHack = false]) {
+     _controller = new StreamController<RawSocketEvent>(
+         onPauseStateChange: _onPauseStateChange,
+         onSubscriptionStateChange: _onSubscriptionStateChange);
+@@ -263,6 +289,46 @@
+     } else {
+       futureSocket = new Future.immediate(socket);
+     }
++
++    if (enablePostgresqlHack) {
++      futureSocket = futureSocket.then((socket) {
++        // Send SSL startup request.
++        socket.write([0, 0, 0, 8, 4, 210, 22, 47]);
++
++        var completer = new Completer<RawSocket>();
++
++        var subs;
++        subs = socket.listen((e) {
++
++          if (e != RawSocketEvent.READ)
++            return;
++
++          subs.cancel();
++
++          var data = socket.read(1);
++
++          if (data == null) {
++            completer.completeError('Postgresql SSL Negotiation failed. SSL response read failed.');
++            return;
++          }
++
++          if (data[0] != 83) { // S
++            completer.completeError('Postgresql SSL Negotiation failed. Server does not support SSL.');
++            return;
++          }
++
++          completer.complete(socket);
++
++        }, onError: (e) {
++          completer.completerError('Postgresql SSL Negotiation failed. Socket error: $e');
++        }, onDone: () {
++          completer.completerError('Postgresql SSL Negotiation failed. Socket closed unexpectedly.');
++        });
++
++        return completer.future;
++      });
++    }
++
+     futureSocket.then((rawSocket) {
+       rawSocket.writeEventsEnabled = false;
+       _socket = rawSocket;

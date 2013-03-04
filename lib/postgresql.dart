@@ -14,16 +14,20 @@ part 'query.dart';
 part 'settings.dart';
 
 //FIXME Just for hacking
-part 'private_test.dart';
+//part 'private_test.dart';
 
 Future<Connection> connect(
     String username,
     String database,
     String password,
-    {String host : 'localhost', int port: 5432}) {
+    {String host : 'localhost', int port: 5432, bool requireSsl: false}) {
   
   var settings = new _Settings(username, database, password, host: host, port: port);
-  return _Connection._connect(settings);
+
+  if (requireSsl)
+    return _Connection._connectSsl2(settings);
+  else
+    return _Connection._connect(settings);
 }
 
 abstract class ExecuteResult {

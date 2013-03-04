@@ -9,6 +9,9 @@ const int _BUSY = 6;
 const int _STREAMING = 7; // state is called "ready" in libpq. Doesn't make sense in a non-blocking impl. 
 const int _CLOSED = 8;
 
+const int _NEGOTIATING_SSL = 9;
+const int _SSL_HANDSHAKE = 10;
+
 String _stateToString(int s) {
   if (s < 0 || s > 8)
     return '?';
@@ -32,6 +35,8 @@ const int _E = 69;
 
 const int _t = 116;
 const int _M = 77;
+const int _N = 78;
+const int _S = 83;
 
 const int _PROTOCOL_VERSION = 196608;
 
@@ -43,6 +48,7 @@ const int _MSG_STARTUP = -1; // Fake message type as StartupMessage has no type 
 const int _MSG_PASSWORD = 112; // 'p'
 const int _MSG_QUERY = 81; // 'Q'
 const int _MSG_TERMINATE = 88; // 'X'
+const int _MSG_SSL_REQUEST = 0; // ?
 
 // Message types sent by the server.
 const int _MSG_AUTH_REQUEST = 82; //'R'.charCodeAt(0);

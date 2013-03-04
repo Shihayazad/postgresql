@@ -3,6 +3,22 @@
 This is alpha level software, expect things to break, especially with the
 number of breaking changes happening in Dart's libraries at the moment.
 
+## SSL 
+
+Postgresql SSL support requires a patched SDK at the moment, until this
+issue is resolved: http://code.google.com/p/dart/issues/detail?id=8789 .
+
+Check that your database will accept SSL connections.
+```bash
+PGSSLMODE=require psql -U testdb -h localhost -W testdb
+```
+
+You will need to check out the dart sdk, apply a patch, and build the
+standalone vm (The patch is in secure_socket.dart.diff).
+
+Run test/ssl_test.dart using the freshly built dartvm.
+
+
 ## Basic usage
 
 ### Obtaining a connection
