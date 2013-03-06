@@ -4,7 +4,7 @@
 
 ## Handle empty queries
 
-## Connection Settings:
+## Connection Settings
    - Export connection Settings class.
    - Change connect to take Settings class as parameter.
    - Write Settings ctors:
@@ -12,7 +12,7 @@
       - fromPsqlEnv()
       - fromHerokuEnv()
 
-## Add mapping support:  
+## Add mapping support  
   (Though - you can do this already with stream.)
 
   query('select a, b from blah', map: (r) => new Blah(r.a, r.b));
@@ -25,13 +25,13 @@
                     .. b = r.b;
   });
 
-## Write some reflection mappers:
+## Write some reflection mappers
   query('select a, b from blah', map: constructorMapper(Blah));
   query('select a, b from blah', map: memberMapper(Blah));
   Note: this will be slow, as it uses reflection. But it's convienient.
 
 
-## Query value subsitution and escaping.
+## Query value subsitution and escaping
   - Goal: Prevent sql injection attacks.
   - Change query(), and exec() methods to:
      
@@ -57,7 +57,7 @@
     query('select a, b from blah where id = @0:int', [5]);
 
 
-## Add support for new types:
+## Add support for new types
 
   - Timestamp with timezone => class OffsetDateTime { final Duration offset; final DateTime dateTime; }.    
     First only implement parsing for now, don't implement DateTime interface.
@@ -72,11 +72,9 @@
   - bytea => List<int>
   - In text mode this is returned as a base64 encoded string - I think.
 
-  - text
-  - Any decoding required. Any odd UTF stuff?
+  - text Any decoding required. Any odd UTF stuff?
 
-  - xml, json
-  - Automatically decode?
+  - xml, json Automatically decode?
 
   - hstore => Map<String,String>
 
@@ -84,7 +82,7 @@
     i.e. oid, serial, bigserial.
 
 
-## Write new tests, that use a mock socket, rather than a live database.
+## Write new tests, that use a mock socket, rather than a live database
   - Add a public mockSocketProperty to the Settings object, so this can be tested
     in the public version.
   - Write some code to dump all conversation between database and client. This
@@ -97,13 +95,14 @@
   - figure out how important this is to support.
 
 
-## Write performance tests.
+## Write performance tests
 
 
-## Implement streaming data decoding.
+## Implement streaming data decoding
    - Check performance against non streaming version for small data.
 
 
-## Have a look at Dapper, and PicoPoco, and see if there are any feature ideas.
+## Have a look at Dapper, and PicoPoco
+   - See if there are any feature ideas.
    - Add support for serialising lists to sql:
     query('select a, b from blah where id in @id', {'id': [1, 2, 3, 4]});
